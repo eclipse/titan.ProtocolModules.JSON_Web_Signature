@@ -1,0 +1,143 @@
+= JSON Web Signature Protocol Modules for TTCN-3 Toolset with TITAN, Description
+:author: Gábor Szalai
+:toc: left
+
+== About This Document
+
+This is the description for the JSON Web Signature protocol module. The JSON Web Signature protocol modules are developed for the TTCN-3 Toolset with Titan. 
+
+== Functionality
+
+The JSON Web Signature protocol module implements the object structures and functions for JSON Web Signature <<_5, [5]>> in a formalized way, using the standard specification language TTCN-3. This allows defining of test data (templates) in the TTCN-3 language and correctly encoding/decoding messages when executing test suites using the Titan TTCN-3 test environment.
+The JSON Web Signature protocol module uses Titan’s JSON encoding <<_3, [3]>> and hence is usable with the Titan test toolset only.
+The JSON Web Signature protocol module supports the PASSporT <<_6, [6]>> and the SHAKEN <<_7, [7]>> extensions.
+
+=== Implemented cryptographic algorithms for digital signatures and MACs
+
+The following cryptographic algorithms are supported for JWS:
+
+[width="80%",options="header"]
+|=========================================================
+| "alg" Param Value  | Digital Signature or MAC  Algorithm
+| HS256        | HMAC using SHA-256
+| HS384        | HMAC using SHA-384
+| HS512        | HMAC using SHA-512
+| RS256        | RSASSA-PKCS1-v1_5 using SHA-256
+| RS384        | RSASSA-PKCS1-v1_5 using SHA-384
+| RS512        | RSASSA-PKCS1-v1_5 using SHA-512
+| ES256        | ECDSA using P-256 and SHA-256
+| ES384        | ECDSA using P-384 and SHA-384
+| ES512        | ECDSA using P-521 and SHA-512
+|=========================================================
+
+=== System Requirements
+Protocol modules are a set of TTCN-3 source code files that can be used as part of TTCN-3 test suites only. Hence, protocol modules alone do not put specific requirements on the system used. However, in order to compile and execute a TTCN-3 test suite using the set of protocol modules the following system requirements must be satisfied:
+
+* Titan TTCN-3 Test Executor version CRL 113 200/6 R5A (6.5.pl0) or higher installed. For Installation Guide see <<_2, [2]>>. Please note: This version of the test port is not compatible with Titan releases earlier than CRL 113 200/6 R5A.
+
+=== Installation
+The set of protocol modules can be used in developing TTCN-3 test suites using any text editor. Since the JSON Web Signature protocol module is used as a part of a TTCN-3 test suite, this requires TTCN-3 Test Executor be installed before the module can be compiled and executed together with other parts of the test suite. For more details on the installation of TTCN-3 Test Executor see the relevant section of <<_2, [2]>>.
+
+== Interface description
+
+=== Signing and other related functions
+This product also contains signing functions, which assure correct signings and signature verifications. 
+
+==== Implemented functions
+
+===== Signature functions
+
+The `pl_key` parameter is
+
+* either private and public key in PEM format for ECDSA and RSA signatures
+* or the shared secret for HMAC
+
+[source]
+----
+f_JWS_Sign(in JWS_Object pl_obj,
+                             in octetstring pl_key,    // The private key in PEM format
+                             in charstring pl_passwd,  // The optional password of the private key. Empty string is no password
+                             in JWS_Serialization_Mode pl_ser_mode:=JWS_Basic_Serialization,
+                             out JWS_Compact_unpacked pl_signed_obj
+) return JWS_Sign_Result
+
+f_JWS_Sign_verify(in JWS_Compact_unpacked pl_signed_obj,
+                             in octetstring pl_key,     // The public key in PEM format
+                             in charstring pl_passwd    // The optional password of the key. Empty string is no password
+) return JWS_Sign_Result
+----
+
+===== JWS Compact representation handler
+
+This functions unpack and pack the JWS Compact representation into the `JWS_Compact_unpacked` structure.
+
+[source]
+----
+f_JWS_Unpack_Compact_Representation(in JWS_Compact_serialized pl_serialized) return JWS_Compact_unpacked
+
+f_JWS_Pack_Compact_Representation(in JWS_Compact_unpacked pl_unpacked) return JWS_Compact_serialized
+----
+
+===== JWS object handler functions
+
+Converts the JWS object into JWS Compact Serialization format.
+
+[source]
+----
+f_JWS_Object_serialize(in JWS_Object pl_obj,in JWS_Serialization_Mode pl_ser_mode:=JWS_Basic_Serialization) return JWS_Compact_unpacked
+
+f_JWS_Object_unserialize(in JWS_Compact_unpacked pl_comp, out JWS_Object pl_obj) return integer
+----
+
+===== Internal helper functions
+
+Used internally, do not use them directly.
+
+[source]
+----
+f_sort_JWS_JSON_Object(in JWS_JSON_Object pl_unsorted) return JWS_JSON_Object
+decode_JWS_helper_struct(in octetstring os) return JWS_helper_struct
+encode_JWS_helper_struct(in JWS_helper_struct pdu) return octetstring
+----
+
+== Terminology	
+
+=== Abbreviations
+
+JSON:: JavaScript Object Notation
+
+JWS:: JSON Web Signature
+
+PDU:: Protocol Data Unit
+
+TTCN-3:: Testing and Test Control Notation version 3
+
+== References
+
+[[_1]]
+[1]	ETSI ES 201 873-1 v4.4.1 (2012-04) +
+The Testing and Test Control Notation version 3. Part 1: Core Language
+
+[[_2]]
+[2]	1/ 198 17-CRL 113 200/6 Uen +
+Installation Guide for the TITAN TTCN-3 Test Executor
+
+[[_3]]
+[3]	2/198 17-CRL 113 200/6 Uen +
+Programmer's Technical Reference for Titan TTCN-3 Test Executor
+
+[[_4]]
+[4]	https://www.json.org
+
+[[_5]]
+[5] RFC7515+
+JSON Web Signature (JWS)
+
+[[_6]]
+[6] RFC8225+
+PASSporT: Personal Assertion Token
+
+[[_7]]
+[7] RFC8588+
+Personal Assertion Token (PaSSporT) Extension for Signature-based +
+Handling of Asserted information using toKENs (SHAKEN)

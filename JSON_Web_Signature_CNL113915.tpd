@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2000-2019 Ericsson Telecom AB
+  All rights reserved. This program and the accompanying materials
+  are made available under the terms of the Eclipse Public License v2.0
+  which accompanies this distribution, and is available at
+  https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.html
+
+   File:               JSON_Web_Signature_CNL113915.tpd
+   Description:        tpd project file
+
+ -->
+<TITAN_Project_File_Information version="1.0">
+  <ProjectName>JSON_Web_Signature_CNL113915</ProjectName>
+  <ReferencedProjects>
+    <ReferencedProject name="TCCUsefulFunctions_CNL113472_Common" projectLocationURI="../../Libraries/TCCUsefulFunctions_CNL113472/TCCUsefulFunctions_CNL113472_Common.tpd"/>
+    <ReferencedProject name="TCCUsefulFunctions_CNL113472_OpenSecurity" projectLocationURI="../../Libraries/TCCUsefulFunctions_CNL113472/TCCUsefulFunctions_CNL113472_OpenSecurity.tpd"/>
+    <ReferencedProject name="JSON_Generic_CNL113899" projectLocationURI="../JSON_Generic_CNL113899/JSON_Generic_CNL113899.tpd"/>
+  </ReferencedProjects>
+  <Folders>
+    <FolderResource projectRelativePath="src" relativeURI="src"/>
+  </Folders>
+  <Files>
+    <FileResource projectRelativePath="src/JWS_func.cc" relativeURI="src/JWS_func.cc"/>
+    <FileResource projectRelativePath="src/JWS_Types.ttcn" relativeURI="src/JWS_Types.ttcn"/>
+    <FileResource projectRelativePath="src/JWS_helper.asn" relativeURI="src/JWS_helper.asn"/>
+  </Files>
+  <ActiveConfiguration>Default</ActiveConfiguration>
+  <Configurations>
+    <Configuration name="Default">
+      <ProjectProperties>
+        <MakefileSettings>
+          <GNUMake>true</GNUMake>
+          <incrementalDependencyRefresh>true</incrementalDependencyRefresh>
+          <targetExecutable>bin/JSON_Web_Signature_CNL113915</targetExecutable>
+        </MakefileSettings>
+        <LocalBuildSettings>
+          <workingDirectory>bin</workingDirectory>
+        </LocalBuildSettings>
+      </ProjectProperties>
+    </Configuration>
+  </Configurations>
+</TITAN_Project_File_Information>

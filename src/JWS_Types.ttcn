@@ -1,0 +1,642 @@
+/******************************************************************************
+* Copyright (c) 2020  Ericsson AB
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v2.0
+* which accompanies this distribution, and is available at
+* https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.html
+*
+* Contributors:
+*   Gabor Szalai - initial implementation and initial documentation
+******************************************************************************/
+//
+//  File:               JWS_Types.ttcn
+//  Description:	      Type definitions for JWS, PASSporT and SHAKEN
+///////////////////////////////////////////////
+module JWS_Types {
+
+import from JSON_Generic all;
+import from TCCConversion_Functions all;
+import from TCCOpenSecurity_Functions all;
+import from TCCEncoding_Functions all;
+import from JWS_helper all;
+
+function f_JWS_Sign(in JWS_Object pl_obj,
+                             in octetstring pl_key,    // The private key in PEM format
+                             in charstring pl_passwd,  // The optional password of the private key. Empty string is no password
+                             in JWS_Serialization_Mode pl_ser_mode:=JWS_Basic_Serialization,
+                             out JWS_Compact_unpacked pl_signed_obj
+) return JWS_Sign_Result {
+  pl_signed_obj:={omit,omit,omit}
+
+  if(not ispresent(pl_obj.jose_header.alg)){
+    // alg is not specified
+    return JWS_Error
+  }
+
+  pl_signed_obj:=f_JWS_Object_serialize(pl_obj,pl_ser_mode)
+
+  select(pl_obj.jose_header.alg){
+    case (pattern "[hH][sS]256"){
+      var octetstring vl_sig_oct
+      var TCCOpenSecurity_Result vl_sign_res:=f_HMAC_data("sha256",pl_key,
+                                                          char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                          vl_sig_oct)
+      if(vl_sign_res==TCCOpenSecurity_Result_OK){
+        pl_signed_obj.jws_signature:=enc_Base64(vl_sig_oct,Base64_Url)
+        return JWS_Sign_OK
+      } else {
+        return JWS_Error
+      }
+    }
+    case (pattern "[hH][sS]384"){
+      var octetstring vl_sig_oct
+      var TCCOpenSecurity_Result vl_sign_res:=f_HMAC_data("sha384",pl_key,
+                                                          char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                          vl_sig_oct)
+      if(vl_sign_res==TCCOpenSecurity_Result_OK){
+        pl_signed_obj.jws_signature:=enc_Base64(vl_sig_oct,Base64_Url)
+        return JWS_Sign_OK
+      } else {
+        return JWS_Error
+      }
+    }
+    case (pattern "[hH][sS]512"){
+      var octetstring vl_sig_oct
+      var TCCOpenSecurity_Result vl_sign_res:=f_HMAC_data("sha512",pl_key,
+                                                          char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                          vl_sig_oct)
+      if(vl_sign_res==TCCOpenSecurity_Result_OK){
+        pl_signed_obj.jws_signature:=enc_Base64(vl_sig_oct,Base64_Url)
+        return JWS_Sign_OK
+      } else {
+        return JWS_Error
+      }
+    }
+    case ( pattern "[rR][sS]256") {
+      var octetstring vl_sig_oct
+      var DigestSign_Result vl_sign_res:=f_DigestSign_data( "SHA256", pl_key, pl_passwd,
+                                                                     char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                                     vl_sig_oct
+                                                                     )
+
+      select(vl_sign_res){
+        case (DigestSign_OK){
+          pl_signed_obj.jws_signature:=enc_Base64(vl_sig_oct,Base64_Url)
+          return JWS_Sign_OK
+        }
+        case else {
+          return JWS_Error
+        }
+      }
+    }
+    case ( pattern "[rR][sS]384") {
+      var octetstring vl_sig_oct
+      var DigestSign_Result vl_sign_res:=f_DigestSign_data( "SHA384", pl_key, pl_passwd,
+                                                                     char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                                     vl_sig_oct
+                                                                     )
+
+      select(vl_sign_res){
+        case (DigestSign_OK){
+          pl_signed_obj.jws_signature:=enc_Base64(vl_sig_oct,Base64_Url)
+          return JWS_Sign_OK
+        }
+        case else {
+          return JWS_Error
+        }
+      }
+    }
+    case ( pattern "[rR][sS]512") {
+      var octetstring vl_sig_oct
+      var DigestSign_Result vl_sign_res:=f_DigestSign_data( "SHA512", pl_key, pl_passwd,
+                                                                     char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                                     vl_sig_oct
+                                                                     )
+
+      select(vl_sign_res){
+        case (DigestSign_OK){
+          pl_signed_obj.jws_signature:=enc_Base64(vl_sig_oct,Base64_Url)
+          return JWS_Sign_OK
+        }
+        case else {
+          return JWS_Error
+        }
+      }
+    }
+    case ( pattern "[eE][sS]256") {
+      var octetstring vl_sig_oct
+      var DigestSign_Result vl_sign_res:=f_DigestSign_data( "SHA256", pl_key, pl_passwd,
+                                                                     char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                                     vl_sig_oct
+                                                                     )
+
+      select(vl_sign_res){
+        case (DigestSign_OK){
+          var JWS_helper_struct vl_helper:=decode_JWS_helper_struct(vl_sig_oct)
+          vl_sig_oct:=int2oct(vl_helper.f1,32) & int2oct(vl_helper.f2,32)
+          pl_signed_obj.jws_signature:=enc_Base64(vl_sig_oct,Base64_Url)
+          return JWS_Sign_OK
+        }
+        case else {
+          return JWS_Error
+        }
+      }
+    }
+    case ( pattern "[eE][sS]384") {
+      var octetstring vl_sig_oct
+      var DigestSign_Result vl_sign_res:=f_DigestSign_data( "SHA384", pl_key, pl_passwd,
+                                                                     char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                                     vl_sig_oct
+                                                                     )
+
+      select(vl_sign_res){
+        case (DigestSign_OK){
+          var JWS_helper_struct vl_helper:=decode_JWS_helper_struct(vl_sig_oct)
+          vl_sig_oct:=int2oct(vl_helper.f1,48) & int2oct(vl_helper.f2,48)
+          pl_signed_obj.jws_signature:=enc_Base64(vl_sig_oct,Base64_Url)
+          return JWS_Sign_OK
+        }
+        case else {
+          return JWS_Error
+        }
+      }
+    }
+    case ( pattern "[eE][sS]512") {
+      var octetstring vl_sig_oct
+      var DigestSign_Result vl_sign_res:=f_DigestSign_data( "SHA512", pl_key, pl_passwd,
+                                                                     char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                                     vl_sig_oct
+                                                                     )
+
+      select(vl_sign_res){
+        case (DigestSign_OK){
+          var JWS_helper_struct vl_helper:=decode_JWS_helper_struct(vl_sig_oct)
+          vl_sig_oct:=int2oct(vl_helper.f1,66) & int2oct(vl_helper.f2,66)
+          pl_signed_obj.jws_signature:=enc_Base64(vl_sig_oct,Base64_Url)
+          return JWS_Sign_OK
+        }
+        case else {
+          return JWS_Error
+        }
+      }
+    }
+    case else {
+      // The selected alg is not implemented
+      return JWS_Not_Supported
+    }
+  }
+
+
+  return JWS_Error
+}
+
+function f_JWS_Sign_verify(in JWS_Compact_unpacked pl_signed_obj,
+                             in octetstring pl_key,     // The public key in PEM format
+                             in charstring pl_passwd    // The optional password of the key. Empty string is no password
+) return JWS_Sign_Result {
+
+  var JWS_Object vl_jws_obj
+  var integer vl_res:=f_JWS_Object_unserialize(pl_signed_obj,vl_jws_obj)
+
+  if(vl_res !=0) {
+    // Can't unpack the received data
+    return JWS_Error
+  }
+
+  if(not ispresent(vl_jws_obj.jose_header.alg)){
+    // alg is not specified
+    return JWS_Error
+  }
+
+  if(not ispresent(pl_signed_obj.jws_signature)){
+    // signature is missing
+    return JWS_Error
+  }
+
+  select(vl_jws_obj.jose_header.alg){
+    case (pattern "[hH][sS]256"){
+      var octetstring vl_sig_oct
+      var TCCOpenSecurity_Result vl_sign_res:=f_HMAC_data("sha256",pl_key,
+                                                          char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                          vl_sig_oct)
+      if(vl_sign_res!=TCCOpenSecurity_Result_OK){
+        return JWS_Error
+      }
+      var octetstring vl_recv_sig:=dec_Base64(pl_signed_obj.jws_signature,Base64_Url)
+      if(vl_recv_sig==vl_sig_oct) {
+        return JWS_Sign_OK
+      } else {
+        return JWS_Sign_Verification_Failed
+      }
+    }
+    case (pattern "[hH][sS]384"){
+      var octetstring vl_sig_oct
+      var TCCOpenSecurity_Result vl_sign_res:=f_HMAC_data("sha384",pl_key,
+                                                          char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                          vl_sig_oct)
+      if(vl_sign_res!=TCCOpenSecurity_Result_OK){
+        return JWS_Error
+      }
+      var octetstring vl_recv_sig:=dec_Base64(pl_signed_obj.jws_signature,Base64_Url)
+      if(vl_recv_sig==vl_sig_oct) {
+        return JWS_Sign_OK
+      } else {
+        return JWS_Sign_Verification_Failed
+      }
+    }
+    case (pattern "[hH][sS]512"){
+      var octetstring vl_sig_oct
+      var TCCOpenSecurity_Result vl_sign_res:=f_HMAC_data("sha512",pl_key,
+                                                          char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                          vl_sig_oct)
+      if(vl_sign_res!=TCCOpenSecurity_Result_OK){
+        return JWS_Error
+      }
+      var octetstring vl_recv_sig:=dec_Base64(pl_signed_obj.jws_signature,Base64_Url)
+      if(vl_recv_sig==vl_sig_oct) {
+        return JWS_Sign_OK
+      } else {
+        return JWS_Sign_Verification_Failed
+      }
+    }
+    case ( pattern "[rR][sS]256") {
+      var octetstring vl_sig_oct:=dec_Base64(pl_signed_obj.jws_signature,Base64_Url);
+      var DigestSign_Result vl_verify_res:=f_DigestSign_Verify_data( "SHA256", pl_key, pl_passwd,
+                                                                     char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                                     vl_sig_oct
+                                                                     )
+      select(vl_verify_res){
+        case (DigestSign_OK){
+          return JWS_Sign_OK
+        }
+        case (DigestSign_Verification_Failed) {
+          return JWS_Sign_Verification_Failed
+        }
+        case else {
+          return JWS_Error
+        }
+      }
+    }
+    case ( pattern "[rR][sS]384") {
+      var octetstring vl_sig_oct:=dec_Base64(pl_signed_obj.jws_signature,Base64_Url);
+      var DigestSign_Result vl_verify_res:=f_DigestSign_Verify_data( "SHA384", pl_key, pl_passwd,
+                                                                     char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                                     vl_sig_oct
+                                                                     )
+      select(vl_verify_res){
+        case (DigestSign_OK){
+          return JWS_Sign_OK
+        }
+        case (DigestSign_Verification_Failed) {
+          return JWS_Sign_Verification_Failed
+        }
+        case else {
+          return JWS_Error
+        }
+      }
+    }
+    case ( pattern "[rR][sS]512") {
+      var octetstring vl_sig_oct:=dec_Base64(pl_signed_obj.jws_signature,Base64_Url);
+      var DigestSign_Result vl_verify_res:=f_DigestSign_Verify_data( "SHA512", pl_key, pl_passwd,
+                                                                     char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                                     vl_sig_oct
+                                                                     )
+      select(vl_verify_res){
+        case (DigestSign_OK){
+          return JWS_Sign_OK
+        }
+        case (DigestSign_Verification_Failed) {
+          return JWS_Sign_Verification_Failed
+        }
+        case else {
+          return JWS_Error
+        }
+      }
+    }
+    case ( pattern "[eE][sS]256") {
+      var octetstring vl_sig_oct:=dec_Base64(pl_signed_obj.jws_signature,Base64_Url);
+      if(lengthof(vl_sig_oct)!=64){
+        // Wrong signature length
+        return JWS_Error
+      }
+      var JWS_helper_struct vl_helper:={oct2int(substr(vl_sig_oct,0,32)),oct2int(substr(vl_sig_oct,32,32))}
+      vl_sig_oct:=encode_JWS_helper_struct(vl_helper);
+      var DigestSign_Result vl_verify_res:=f_DigestSign_Verify_data( "SHA256", pl_key, pl_passwd,
+                                                                     char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                                     vl_sig_oct
+                                                                     )
+      select(vl_verify_res){
+        case (DigestSign_OK){
+          return JWS_Sign_OK
+        }
+        case (DigestSign_Verification_Failed) {
+          return JWS_Sign_Verification_Failed
+        }
+        case else {
+          return JWS_Error
+        }
+      }
+    }
+    case ( pattern "[eE][sS]384") {
+      var octetstring vl_sig_oct:=dec_Base64(pl_signed_obj.jws_signature,Base64_Url);
+      if(lengthof(vl_sig_oct)!=96){
+        // Wrong signature length
+        return JWS_Error
+      }
+      var JWS_helper_struct vl_helper:={oct2int(substr(vl_sig_oct,0,48)),oct2int(substr(vl_sig_oct,48,48))}
+      vl_sig_oct:=encode_JWS_helper_struct(vl_helper);
+      var DigestSign_Result vl_verify_res:=f_DigestSign_Verify_data( "SHA384", pl_key, pl_passwd,
+                                                                     char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                                     vl_sig_oct
+                                                                     )
+      select(vl_verify_res){
+        case (DigestSign_OK){
+          return JWS_Sign_OK
+        }
+        case (DigestSign_Verification_Failed) {
+          return JWS_Sign_Verification_Failed
+        }
+        case else {
+          return JWS_Error
+        }
+      }
+    }
+    case ( pattern "[eE][sS]512") {
+      var octetstring vl_sig_oct:=dec_Base64(pl_signed_obj.jws_signature,Base64_Url);
+      if(lengthof(vl_sig_oct)!=132){
+        // Wrong signature length
+        return JWS_Error
+      }
+      var JWS_helper_struct vl_helper:={oct2int(substr(vl_sig_oct,0,66)),oct2int(substr(vl_sig_oct,66,66))}
+      vl_sig_oct:=encode_JWS_helper_struct(vl_helper);
+      var DigestSign_Result vl_verify_res:=f_DigestSign_Verify_data( "SHA512", pl_key, pl_passwd,
+                                                                     char2oct(pl_signed_obj.protected_header) & char2oct(".") & char2oct(pl_signed_obj.jws_payload),
+                                                                     vl_sig_oct
+                                                                     )
+      select(vl_verify_res){
+        case (DigestSign_OK){
+          return JWS_Sign_OK
+        }
+        case (DigestSign_Verification_Failed) {
+          return JWS_Sign_Verification_Failed
+        }
+        case else {
+          return JWS_Error
+        }
+      }
+    }
+    case else {
+      // The selected alg is not implemented
+      return JWS_Not_Supported
+    }
+  }
+
+
+
+  return JWS_Error
+}
+
+
+// Function to unpack and pack the JWS Compact representation (see 3.1 of RFC7515)
+// into the JWS_Compact_unpacked by separating each part.
+
+// returns empty struct if the format of the input is invalid
+function f_JWS_Unpack_Compact_Representation(in JWS_Compact_serialized pl_serialized) return JWS_Compact_unpacked {
+  var TCC_Conversion_ch_list vl_splitted:=f_split(pl_serialized,".");
+  if(lengthof(vl_splitted)!=3){
+    return {omit,omit,omit}
+  }
+
+  return {vl_splitted[0],vl_splitted[1],vl_splitted[2]}
+}
+
+function f_JWS_Pack_Compact_Representation(in JWS_Compact_unpacked pl_unpacked) return JWS_Compact_serialized {
+  var JWS_Compact_serialized ret_val:=""
+  if(ispresent(pl_unpacked.protected_header)) {
+    ret_val:=ret_val & pl_unpacked.protected_header
+  }
+  ret_val:=ret_val & "."
+  if(ispresent(pl_unpacked.jws_payload)) {
+    ret_val:=ret_val & pl_unpacked.jws_payload
+  }
+  ret_val:=ret_val & "."
+  if(ispresent(pl_unpacked.jws_signature)) {
+    ret_val:=ret_val & pl_unpacked.jws_signature
+  }
+  return ret_val
+}
+
+// Converts the JWS object into JWS Compact Serialization format.
+// serialize -> Converts the JOSE header and payload to JSON, and use the BASE64URL encoding
+// unserialize -> Base64 decode the payload and the JOSE header and extract the values from the JSON
+
+function f_JWS_Object_serialize(in JWS_Object pl_obj,in JWS_Serialization_Mode pl_ser_mode:=JWS_Basic_Serialization) return JWS_Compact_unpacked {
+  var JWS_Compact_unpacked vl_ret:={omit,omit,omit}
+
+  var JWS_JSON_Object vl_jose_json:={}
+
+  if(ispresent(pl_obj.jose_header.alg)){
+    vl_jose_json[lengthof(vl_jose_json)]:={"alg",{JSON_string:=pl_obj.jose_header.alg}}
+  }
+  if(ispresent(pl_obj.jose_header.ppt)){
+    vl_jose_json[lengthof(vl_jose_json)]:={"ppt",{JSON_string:=pl_obj.jose_header.ppt}}
+  }
+  if(ispresent(pl_obj.jose_header.typ)){
+    vl_jose_json[lengthof(vl_jose_json)]:={"typ",{JSON_string:=pl_obj.jose_header.typ}}
+  }
+  if(ispresent(pl_obj.jose_header.x5u)){
+    vl_jose_json[lengthof(vl_jose_json)]:={"x5u",{JSON_string:=pl_obj.jose_header.x5u}}
+  }
+  if(ispresent(pl_obj.jose_header.additional_headers)){
+    vl_jose_json := vl_jose_json & pl_obj.jose_header.additional_headers
+  }
+
+  if(pl_ser_mode == JWS_Deterministic_Serialization){
+    vl_jose_json := f_sort_JWS_JSON_Object(vl_jose_json)
+  }
+
+  vl_ret.protected_header:=enc_Base64(f_enc_JSON({JSON_object:=vl_jose_json}),Base64_Url)
+
+  if(ischosen(pl_obj.jws_payload.json_claim)){
+    if(pl_ser_mode == JWS_Deterministic_Serialization){
+      vl_ret.jws_payload:=enc_Base64(f_enc_JSON({JSON_object:=f_sort_JWS_JSON_Object(pl_obj.jws_payload.json_claim)}),Base64_Url)
+    } else {
+      vl_ret.jws_payload:=enc_Base64(f_enc_JSON({JSON_object:=pl_obj.jws_payload.json_claim}),Base64_Url)
+    }
+  } else {
+    vl_ret.jws_payload:=enc_Base64(pl_obj.jws_payload.generic_payload,Base64_Url)
+  }
+
+  return vl_ret
+}
+
+function f_JWS_Object_unserialize(in JWS_Compact_unpacked pl_comp, out JWS_Object pl_obj) return integer { // 0 - OK, 1 - Fail
+  // Initialize the out value
+  pl_obj.jose_header:={omit,omit,omit,omit,omit}  // empty header
+  pl_obj.jws_payload:={generic_payload:=''O}      // empty body
+
+  if(ispresent(pl_comp.protected_header)){    // Decode the header
+    var octetstring vl_jose_oct:=dec_Base64(pl_comp.protected_header,Base64_Url)
+    var JSON_generic_val vl_jose_json
+    var integer vl_dec_res:=f_dec_JSON(vl_jose_oct,vl_jose_json)
+    if(vl_dec_res == 0 and ischosen(vl_jose_json.JSON_object)){
+      // The protected header looks like a JSON object
+      var integer vl_i:=0
+      for(vl_i:=0;vl_i<lengthof(vl_jose_json.JSON_object);vl_i:=vl_i+1){
+        select(vl_jose_json.JSON_object[vl_i].key){
+          case ("alg"){
+            if(ischosen(vl_jose_json.JSON_object[vl_i].val.JSON_string)){
+              pl_obj.jose_header.alg:=f_unichar2charstr(vl_jose_json.JSON_object[vl_i].val.JSON_string)
+            } else {
+              // The alg should be a string
+              return 1;
+            }
+          }
+          case ("ppt"){
+            if(ischosen(vl_jose_json.JSON_object[vl_i].val.JSON_string)){
+              pl_obj.jose_header.ppt:=f_unichar2charstr(vl_jose_json.JSON_object[vl_i].val.JSON_string)
+            } else {
+              // The ppt should be a string
+              return 1;
+            }
+          }
+          case ("typ"){
+            if(ischosen(vl_jose_json.JSON_object[vl_i].val.JSON_string)){
+              pl_obj.jose_header.typ:=f_unichar2charstr(vl_jose_json.JSON_object[vl_i].val.JSON_string)
+            } else {
+              // The typ should be a string
+              return 1;
+            }
+          }
+          case ("x5u"){
+            if(ischosen(vl_jose_json.JSON_object[vl_i].val.JSON_string)){
+              pl_obj.jose_header.x5u:=f_unichar2charstr(vl_jose_json.JSON_object[vl_i].val.JSON_string)
+            } else {
+              // The x5u should be a string
+              return 1;
+            }
+          }
+          case else{
+            if(not ispresent(pl_obj.jose_header.additional_headers)){
+              pl_obj.jose_header.additional_headers:={}
+            }
+            pl_obj.jose_header.additional_headers[lengthof(pl_obj.jose_header.additional_headers)]:=vl_jose_json.JSON_object[vl_i]
+          }
+        }
+      }
+    } else {
+      // JOSE header is not a JSON object
+      return 1;
+    }
+  }
+
+  if(ispresent(pl_comp.jws_payload)){
+    var octetstring vl_payload_oct:=dec_Base64(pl_comp.jws_payload,Base64_Url)
+    var JSON_generic_val vl_payload_json
+    var integer vl_dec_res:=f_dec_JSON(vl_payload_oct,vl_payload_json)
+    if(vl_dec_res == 0 and ischosen(vl_payload_json.JSON_object)){
+      // The payload looks like a JSON object
+      pl_obj.jws_payload.json_claim:=vl_payload_json.JSON_object
+    } else {
+      // Generic payload
+      pl_obj.jws_payload.generic_payload:=vl_payload_oct
+    }
+  }
+  return 0
+}
+// Function to encode and decode the JWS JSON serialization format as defined in Chapter 7.2 of RFC7515
+
+external function f_enc_JWS_JSON_Serialization(in JWS_JSON_Serialization pdu) return octetstring
+with { extension "prototype(convert) encode(JSON)" }
+
+external function f_dec_JWS_JSON_Serialization(in octetstring stream, out JWS_JSON_Serialization pdu) return integer
+with { extension "prototype(backtrack) decode(JSON)" }
+
+
+
+// Helper functions, do not use directly
+external function f_sort_JWS_JSON_Object(in JWS_JSON_Object pl_unsorted) return JWS_JSON_Object
+
+
+external function decode_JWS_helper_struct(in octetstring os) return JWS_helper_struct
+with { extension "prototype(convert) decode(BER:BER_ACCEPT_ALL)" }
+
+external function encode_JWS_helper_struct(in JWS_helper_struct pdu) return octetstring
+with { extension "prototype(convert) encode(BER:BER_ENCODE_DER)" }
+
+
+type JSON_generic_val.JSON_object JWS_JSON_Object
+
+// The result of the signing or the signiture verification
+type enumerated JWS_Sign_Result{ JWS_Sign_OK,            // Signed or the signiture is valid
+                                 JWS_Sign_Verification_Failed,  // Signiture verification failed
+                                 JWS_Not_Supported, // The selected alg is not supported
+                                 JWS_Error          // Something went wrong
+}
+
+type enumerated JWS_Serialization_Mode { JWS_Basic_Serialization,   // The JOSE header and the JSON body is encoded as is without any ordering and white space removal
+                                         JWS_Deterministic_Serialization  // See chapter 9 of RFC 8225
+                                       }
+
+// The representation of the JOSE header as defined in RFC 7515
+type record JWS_JOSE_Header{
+  charstring          alg optional,
+  charstring          ppt optional,
+  charstring          typ optional,
+  charstring          x5u optional,
+  JWS_JSON_Object     additional_headers optional   // The other headers goes there
+}
+
+// JWS payload representation
+type union JWS_Claim_Payload{
+  JWS_JSON_Object       json_claim,       // The payload is a JSON object/claim
+  octetstring           generic_payload   // Generic payload. It can be whatever
+}
+
+// The JWS object to be signed
+type record JWS_Object{
+  JWS_JOSE_Header      jose_header,
+  JWS_Claim_Payload    jws_payload
+}
+
+// The unpacked form of the JWS Compact representation (see 3.1 of RFC7515)
+type record JWS_Compact_unpacked{
+  charstring     protected_header optional,  // BASE64URL(UTF8(JWS Protected Header))
+  charstring     jws_payload optional,       // BASE64URL(JWS Payload)
+  charstring     jws_signature optional      // BASE64URL(JWS Signature)
+}
+
+type charstring JWS_Compact_serialized
+
+
+// Data type for the JWS JSON Serialization Chapter 7.2 of RFC7515
+// Support both the general and flattened syntax
+type set JWS_JSON_Serialization{
+  charstring                 jws_payload,
+  JSON_generic_val           unprotected_header optional,
+  charstring                 protected_header optional,
+  charstring                 jws_signature  optional,
+  JWS_JSON_Signatures_list   signatures optional
+} with {
+    variant (jws_payload) "name as 'payload'"
+    variant (jws_signature) "name as 'signature'"
+    variant (unprotected_header) "name as 'header'"
+    variant (protected_header) "name as 'protected'"
+}
+
+
+type record of JWS_JSON_Signatures JWS_JSON_Signatures_list
+
+type set JWS_JSON_Signatures{
+  JSON_generic_val           unprotected_header optional,
+  charstring                 protected_header optional,
+  charstring                 jws_signature  optional
+} with {
+    variant (jws_signature) "name as 'signature'"
+    variant (unprotected_header) "name as 'header'"
+    variant (protected_header) "name as 'protected'"
+}
+
+} with {
+  encode "JSON"
+}

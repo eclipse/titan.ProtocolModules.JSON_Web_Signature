@@ -1,0 +1,18 @@
+= JSON Web Signature Protocol Modules for TTCN-3 Toolset with TITAN, Change log
+:author: Gábor Szalai
+:toc: left
+
+== Changes
+
+=== R1A
+
+Initial revision
+
+=== R1B
+
+The alg names are case insensitive.
+
+=== R1C
+
+Added support of HS384 & HS512
+
